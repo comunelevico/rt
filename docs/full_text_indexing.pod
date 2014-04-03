@@ -61,15 +61,57 @@ C<cron>:
 
 =head1 MYSQL
 
-MySQL does not support full-text indexing natively.  However, it does
-integrate with the external Sphinx engine, available from
+MySQL does not support full-text indexing natively until version 5.6 and
+above.  For prior versions, RT can integrate with the external Sphinx
+full-text search engine.
+
+=head2 MySQL 5.6 and above
+
+MySQL 5.6 includes full-text search of InnoDB tables.  However, as RT
+marks attachment data as C<BINARY>, it cannot index this content without
+creating additional tables.  To create the required table, run:
+
+    sbin/rt-setup-fulltext-index
+
+If you have a non-standard database administrator username or password,
+you may need to pass the C<--dba> or C<--dba-password> options:
+
+    sbin/rt-setup-fulltext-index --dba root --dba-password secret
+
+This will also output an appropriate C<%FullTextSearch> configuration to
+add to your F<RT_SiteConfig.pm>; you will need to restart your webserver
+after making these changes.  However, the index will also need to be
+filled before it can be used.  To update the index initially, run:
+
+    sbin/rt-fulltext-indexer --all
+
+This will tokenize and index all existing attachments in your database;
+it may take quite a while if your database already has a large number of
+tickets in it.
+
+=head3 Updating the index
+
+To keep the index up-to-date, you will need to run:
+
+    sbin/rt-fulltext-indexer
+
+...at regular intervals.  By default, this will only tokenize up to 100
+tickets at a time; you can adjust this upwards by passing
+C<--limit 500>.  Larger batch sizes will take longer and
+consume more memory.  Care should be taken to ensure that multiple
+instances of C<rt-fulltext-indexer> are not run at the same time.
+
+
+=head2 MySQL with Sphinx
+
+RT can also integrate with the external Sphinx engine, available from
 L<http://sphinxsearch.com>.  Unfortunately, Sphinx integration (using
 SphinxSE) does require that you recompile MySQL from source.  Most
 distribution-provided packages for MySQL do not include SphinxSE
 integration, merely the external Sphinx tools; these are not sufficient
 for RT's needs.
 
-=head2 Compiling MySQL and SphinxSE
+=head3 Compiling MySQL and SphinxSE
 
 SphinxSE requires MySQL 5.0, 5.1, or 5.5; on the latter two, Sphinx can
 be compiled as a loadable module, for easer of deployment in production.
@@ -78,7 +120,7 @@ as well.  Compilation and installation instructions for MySQL with
 SphinxSE can be found at
 L<http://sphinxsearch.com/docs/current.html#sphinxse-installing>.
 
-=head2 Creating and configuring the index
+=head3 Creating and configuring the index
 
 Once MySQL has been recompiled with SphinxSE, and Sphinx itself is
 installed, you may create the required SphinxSE communication table via:
@@ -105,7 +147,7 @@ Finally, start the Sphinx search daemon:
 
     searchd
 
-=head2 Updating the index
+=head3 Updating the index
 
 To keep the index up-to-date, you will need to run:
 
@@ -114,7 +156,7 @@ To keep the index up-to-date, you will need to run:
 ...at regular intervals in order to pick up new and updated attachments
 from RT's database.  Failure to do so will result in stale data.
 
-=head2 Caveats
+=head3 Caveats
 
 RT's integration with Sphinx relies on the use of a special index; there
 exist queries where the MySQL optimizer elects to I<not> use that index,

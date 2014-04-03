@@ -932,6 +932,17 @@ sub _TransContentLimit {
                 QUOTEVALUE  => 0,
             );
         }
+        elsif ( $db_type eq 'mysql' and not $config->{Sphinx}) {
+            my $dbh = $RT::Handle->dbh;
+            $value =~ s/["\\]+/ /g;
+            $self->Limit(
+                %rest,
+                FUNCTION    => "MATCH($alias.Content)",
+                OPERATOR    => 'AGAINST',
+                VALUE       => '("'. $dbh->quote($value) .'" IN BOOLEAN MODE)',
+                QUOTEVALUE  => 0,
+            );
+        }
         elsif ( $db_type eq 'mysql' ) {
             # XXX: We could theoretically skip the join to Attachments,
             # and have Sphinx simply index and group by the TicketId,
