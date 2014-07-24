@@ -118,7 +118,7 @@ sub LimitToGrouping {
     my $obj = shift;
     my $grouping = shift;
 
-    my $grouping_class = RT::CustomField->_GroupingClass($obj);
+    my $grouping_class = RT::CustomField->_GroupingClass($obj,$self->ContextObject);
 
     my $config = RT->Config->Get('CustomFieldGroupings');
        $config = {} unless ref($config) eq 'HASH';
